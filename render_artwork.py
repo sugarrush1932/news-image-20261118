@@ -1,8 +1,8 @@
 # render_artwork.py - draws the entry artwork for news-image-20261118.
 #
-# The Day in One Image, v3: a dense front page summing up the world news
-# of Wednesday 18 November 2026 on one 1024x1024 canvas. 54 stories:
-# 16 illustrated panels plus 38 one-line briefs, two taxonomy strips
+# The Day in One Image, v4: a dense front page summing up the world news
+# of Wednesday 18 November 2026 on one 1024x1024 canvas. 58 stories:
+# 16 illustrated panels plus 42 one-line briefs, two taxonomy strips
 # (by region and by field), an 8-slot UTC timeline, a DAY IN NUMBERS
 # stat row, a filled world map with pins for the panel stories, and a
 # DATE CHECK strip listing what was deliberately left out on date
@@ -173,7 +173,7 @@ PANELS = [
      "Kuwait says its defences intercepted the drones; Tehran claims Patriots hit.",
      "[CONFIRMED] AP", "drone", "WAR & SECURITY"),
     ("EUROPE", "WAR", "ODESA STRUCK AGAIN; EU OFFERS KYIV \u20ac45BN",
-     "Three strikes hit the historic centre, killing four; EU offers a \u20ac45bn loan.",
+     "141 drones overnight, 126 downed; four die in Odesa as EU offers a \u20ac45bn loan.",
      "[CONFIRMED] AL JAZEERA", "odesa", "WAR & SECURITY"),
     ("GLOBAL", "SPACE", "VOYAGER 1 CROSSES ONE LIGHT-DAY",
      "At 10:16 UTC it passed 25.9bn km out \u2014 light now takes a full day to reach it.",
@@ -208,8 +208,8 @@ PANELS = [
     ("GLOBAL", "GAMES", "GTA VI'S WORLDWIDE LAUNCH BEGINS",
      "Rolls out at midnight local time, New Zealand first, on PS5 and Xbox Series.",
      "[CONFIRMED] ROCKSTAR", "gta", "CULTURE & SPORT"),
-    ("AFRICA", "HEALTH", "CONGO'S EBOLA CASES PASS 11,000",
-     "WHO keeps the emergency in place; children are over a quarter of all cases.",
+    ("AFRICA", "HEALTH", "CONGO'S EBOLA CASES PASS 11,300",
+     "WHO keeps the emergency in place; 5,500 dead, children over a quarter of cases.",
      "[CONFIRMED] WHO/UN", "ebola", "SCIENCE & HEALTH"),
     ("OCEANIA", "MUSIC", "TAME IMPALA SWEEPS AUSTRALIA'S ARIAS",
      "Seven wins in Sydney, incl. Album of the Year for Deadbeat; career tally 22.",
@@ -256,6 +256,13 @@ BRIEFS = [
     ("Kashmir: Lashkar chief Bhat killed", "ASIA", "WAR & SECURITY"),
     ("Bucharest: 5.3 quake felt in capital", "EUROPE", "CLIMATE & DISASTERS"),
     ("PNG: magnitude 6.0 quake strikes", "OCEANIA", "CLIMATE & DISASTERS"),
+    ("Shenzhen: Xi pledges role on Korea peace", "ASIA", "DIPLOMACY"),
+    ("Beirut: World Bank \u2014 rebuilding too slow", "MIDDLE EAST",
+     "ECONOMY & MARKETS"),
+    ("Brasilia: Senate passes Lula $10bn plan", "AMERICAS",
+     "ECONOMY & MARKETS"),
+    ("Manila: Trump hails 'biggest' trade deal", "ASIA",
+     "ECONOMY & MARKETS"),
 ]
 
 FIELDS = ["DIPLOMACY", "WAR & SECURITY", "ECONOMY & MARKETS",
@@ -288,7 +295,7 @@ NUMBERS = [
     ("251\u201311", "Democrats' Speaker vote"),
     ("$81.3bn", "Anthropic's record IPO"),
     ("~500", "Bangladesh factories shut"),
-    ("11,000+", "Ebola cases in DR Congo"),
+    ("11,300+", "Ebola cases in DR Congo"),
     ("47,000", "evacuated for Cyclone Akvan"),
 ]
 
@@ -584,7 +591,7 @@ def sc_ebola(d, x, y, w, h):
     d.rectangle([bx, y + 5, bx + 22, y + 27], fill=PAPER_LT, outline=SIL)
     d.rectangle([bx + 8, y + 9, bx + 14, y + 23], fill=RED)
     d.rectangle([bx + 5, y + 13, bx + 17, y + 19], fill=RED)
-    d.text((bx + 30, y + 11), "11,000+", font=sans_b(11), fill=SIL)
+    d.text((bx + 30, y + 11), "11,300+", font=sans_b(11), fill=SIL)
 
 
 def sc_trophy(d, x, y, w, h):
@@ -783,7 +790,8 @@ def field_strip(d, y):
     field_counts = counts_of(PANELS, 6)
     for _, _, fld in BRIEFS:
         field_counts[fld] = field_counts.get(fld, 0) + 1
-    assert sum(field_counts.values()) == 54, field_counts
+    assert sum(field_counts.values()) == len(PANELS) + len(BRIEFS), \
+        field_counts
     ordered = sorted(FIELDS, key=lambda f: -field_counts[f])
     items = " \u00b7 ".join("%s %d" % (f, field_counts[f])
                             for f in ordered)
@@ -869,11 +877,25 @@ def bottom(d, y):
     lx, lw = M, 300
     draw_tracked(d, lx, y, "WHERE IT HAPPENED", sans_b(11), INK,
                  tracking=1)
-    draw_map(d, lx, y + 16, lw, 128)
-    draw_wrapped(d, lx, y + 150,
+    draw_map(d, lx, y + 16, lw, 118)
+    draw_wrapped(d, lx, y + 140,
                  "Red pins: the 16 drawn stories. Pin 4 (Voyager 1) is "
                  "in deep space, off the map.",
                  sans(8), INK_SOFT, lw, 10)
+    # Legend: a colour dot per region, matching the strip up top.
+    f_leg = sans(7.5)
+    names = [(r, REGION_SHORT.get(r, r)) for r in REGIONS]
+    total_w = sum(8 + text_w(d, nm, f_leg) + 3 for _r, nm in names) - 3
+    assert total_w <= lw, total_w
+    cx = lx
+    for r, nm in names:
+        d.ellipse([cx, y + 165, cx + 5, y + 170], fill=REGION_COLORS[r])
+        cx = draw_tracked(d, cx + 8, y + 163, nm, f_leg, INK) + 3
+    # How-sure line: what the panel tags mean.
+    hx = draw_tracked(d, lx, y + 176, "HOW SURE", sans_b(8), RED)
+    draw_tracked(d, hx, y + 176,
+                 " \u2014 [CONFIRMED] checked in 2+ reports",
+                 sans(8), INK)
     rx = M + 322
     rw = W - M - rx
     draw_tracked(d, rx, y, "ALSO ON WEDNESDAY \u2014 %d MORE STORIES"
@@ -881,9 +903,10 @@ def bottom(d, y):
     rule(d, y + 15, x0=rx, x1=W - M, fill=INK, wdt=1)
     col_w = rw / 3
     per_col = (len(BRIEFS) + 2) // 3
+    step = 11.9 if per_col <= 13 else 11.4
     for i, (text, _region, _fld) in enumerate(BRIEFS):
         cx = rx + (i // per_col) * col_w
-        cy = y + 23 + (i % per_col) * 11.9
+        cy = y + 23 + (i % per_col) * step
         num = 17 + i
         draw_tracked(d, cx, cy, "%d" % num, sans_b(8), NAVY)
         tw = text_w(d, text, sans(9))
@@ -920,8 +943,8 @@ def main():
     img = Image.new("RGB", (W, H), PAPER)
     d = ImageDraw.Draw(img)
     total, region_counts = masthead(d)
-    assert total == 54, total
-    assert region_strip(d, 124, region_counts) == 54
+    assert total == len(PANELS) + len(BRIEFS), total
+    assert region_strip(d, 124, region_counts) == total
     field_strip(d, 146)
     timeline(d, 166)
     panels_grid(d, 210)
